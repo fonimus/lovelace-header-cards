@@ -187,6 +187,8 @@ class HeaderCards {
     				let div = document.createElement("div");
     				div.style.width = "auto";
     				div.style.minWidth = "max-content";
+					div.style.display = "flex";
+					div.style.gap = "5px";
     				badges.forEach(badgeConfig => {
     					this.addBadge(badgeConfig, div);	
     				});
