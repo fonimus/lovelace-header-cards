@@ -3,7 +3,7 @@ message=$2
 
 npm run build
 git add --all
-git commit --message "fix: badge display"
+git commit --message "$message"
 git tag -a $version -m "$version"
 git push origin $version
 git push
