@@ -1,3 +1,5 @@
+import * as pjson from '../package.json';
+
 function getLovelace(root) {
     root = root && root.shadowRoot;
     root = root && root.querySelector("hui-root")
@@ -8,10 +10,12 @@ function getLovelace(root) {
     }
 }
 
-function dashboardObserver(main, callback) {
+function dashboardObserver(main, callback): MutationObserver {
     const observer = new MutationObserver(function (mutations) {
         mutations.forEach(({addedNodes}) => {
-            for (let node of addedNodes) {
+            for (const node of addedNodes) {
+                // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+                // @ts-ignore
                 if (node.localName === "ha-panel-lovelace") {
                     setTimeout(() => {
                         callback(node);
@@ -26,10 +30,12 @@ function dashboardObserver(main, callback) {
     return observer;
 }
 
-function toolbarObserver(header, callback) {
+function toolbarObserver(header, callback): MutationObserver {
     const observer = new MutationObserver(function (mutations) {
         mutations.forEach(({addedNodes}) => {
-            for (let node of addedNodes) {
+            for (const node of addedNodes) {
+                // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+                // @ts-ignore
                 if (node.localName === "app-toolbar" && node.className !== "edit-mode") {
                     setTimeout(() => {
                         callback();
@@ -44,10 +50,12 @@ function toolbarObserver(header, callback) {
     return observer;
 }
 
-function panelObserver(panel, callback) {
+function panelObserver(panel, callback): MutationObserver {
     const observer = new MutationObserver(function (mutations) {
         mutations.forEach(({addedNodes}) => {
-            for (let node of addedNodes) {
+            for (const node of addedNodes) {
+                // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+                // @ts-ignore
                 if (node.localName === "hui-root") {
                     setTimeout(() => {
                         callback();
@@ -62,16 +70,23 @@ function panelObserver(panel, callback) {
     return observer;
 }
 
-
 const CUSTOM_TYPE_PREFIX = "custom:";
 
 class HeaderCards {
+
+    private toolbarObserver?: MutationObserver;
+    private panelObserver?: MutationObserver;
+    private createBadgeElement: any
+    private createCardElement: any
+
     constructor() {
         this.addCardsToHeader(getLovelace(this.panel));
         void this.entityWatch();
 
         dashboardObserver(this.main, (node) => {
-            window.HeaderCards.addCardsToHeader(getLovelace(node));
+            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+            // @ts-ignore
+            window.headerCards.addCardsToHeader(getLovelace(node));
 
             if (this.toolbar && !this.toolbarObserver) {
                 this.setupToolbarObserver();
@@ -93,7 +108,9 @@ class HeaderCards {
 
     setupToolbarObserver() {
         this.toolbarObserver = toolbarObserver(this.header, () => {
-            window.HeaderCards.addCardsToHeader(getLovelace(this.panel));
+            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+            // @ts-ignore
+            window.headerCards.addCardsToHeader(getLovelace(this.panel));
         });
     }
 
@@ -103,23 +120,23 @@ class HeaderCards {
         });
     }
 
-    get main() {
-        let main = document.querySelector("home-assistant");
+    get main(): Element | null {
+        let main: Element | ShadowRoot | null = document.querySelector("home-assistant");
         main = main && main.shadowRoot;
         main = main && main.querySelector("home-assistant-main");
         return main;
     }
 
-    get panel() {
-        let root = this.main && this.main.shadowRoot;
+    get panel(): Element | null {
+        let root: Element | ShadowRoot | null = this.main && this.main.shadowRoot;
         root = root && root.querySelector("ha-drawer partial-panel-resolver");
         root = root && root.shadowRoot || root;
         root = root && root.querySelector("ha-panel-lovelace");
         return root;
     }
 
-    get header() {
-        let header = this.panel;
+    get header(): Element | null {
+        let header: Element | ShadowRoot | null = this.panel;
         header = header && header.shadowRoot;
         header = header && header.querySelector("hui-root");
         header = header && header.shadowRoot;
@@ -127,17 +144,26 @@ class HeaderCards {
         return header;
     }
 
-    get toolbar() {
+    get toolbar(): Element | null {
         return this.header && this.header.querySelector("div.toolbar");
     }
 
     get hass() {
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
         return this.main && this.main.hass;
     }
 
     // Run on entity change.
     async entityWatch() {
-        (await window.hassConnection).conn.subscribeMessage((e) => this.entityWatchCallback(e), {
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
+        (await window.hassConnection).conn.subscribeMessage((e) => {
+            this.entityWatchCallback(e);
+            if (e.data.entity_id.startsWith("input")) {
+                this.addCardsToHeader(getLovelace(this.panel));
+            }
+        }, {
             type: "subscribe_events",
             event_type: "state_changed",
         });
@@ -145,8 +171,8 @@ class HeaderCards {
 
     entityWatchCallback(event) {
         if (event.event_type === "state_changed") {
-            let old_state = event.data.old_state && event.data.old_state.state;
-            let new_state = event.data.new_state && event.data.new_state.state;
+            const old_state = event.data.old_state && event.data.old_state.state;
+            const new_state = event.data.new_state && event.data.new_state.state;
             if (new_state !== old_state) {
                 this.applyHass();
             }
@@ -154,7 +180,7 @@ class HeaderCards {
     }
 
     addCard(cardConfig, element) {
-        let card = this.createCardElement(cardConfig);
+        const card = this.createCardElement(cardConfig);
         card.classList.add("header-card");
         card.style.display = "inline-block";
         card.hass = this.hass;
@@ -176,15 +202,14 @@ class HeaderCards {
     addBadge(badgeConfig, element) {
         let visible = true;
         if (badgeConfig.visibility) {
-            for (let visibility of badgeConfig.visibility) {
+            for (const visibility of badgeConfig.visibility) {
                 visible = visible && this.checkStateCondition(visibility, this.hass);
             }
         }
-        if (!visible){
+        if (!visible) {
             return;
         }
-        let badge = this.createBadgeElement(badgeConfig);
-        //console.log('creating badge', badgeConfig, badge);
+        const badge = this.createBadgeElement(badgeConfig);
         badge.classList.add("header-badge");
         badge.hass = this.hass;
         badge.style.setProperty("--ha-label-badge-size", "2em");
@@ -208,7 +233,7 @@ class HeaderCards {
         if (Array.isArray(value)) {
             const entityValues = value
                 .map((v) => this.getValueFromEntityId(hass, v))
-                .filter((v)=> v !== undefined
+                .filter((v) => v !== undefined
                 )
             ;
             value = [...value, ...entityValues];
@@ -219,8 +244,6 @@ class HeaderCards {
                 value.push(entityValue);
             }
         }
-
-        //console.log('>>>', condition.state, value, state)
 
         return condition.state != null
             ? value.includes(state)
@@ -243,10 +266,12 @@ class HeaderCards {
 
     applyHass() {
         if (this.hass && this.toolbar) {
-            let items = this.toolbar.querySelectorAll("#headerCards div .header-card,.header-badge");
+            const items = this.toolbar.querySelectorAll("#headerCards div .header-card,.header-badge");
 
             if (items) {
                 items.forEach(item => {
+                    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+                    // @ts-ignore
                     item.hass = this.hass;
                 });
             }
@@ -254,32 +279,33 @@ class HeaderCards {
     }
 
     addCardsToHeader(lovelace) {
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
         window.loadCardHelpers().then(({
                                            createCardElement,
                                            createBadgeElement
                                        }) => {
             this.createCardElement = createCardElement;
             this.createBadgeElement = createBadgeElement;
-            let config = lovelace.config || {};
+            const config = lovelace.config || {};
 
-            let headerCardsConfig = config.header_cards || {};
+            const headerCardsConfig = config.header_cards || {};
 
-            let cards = headerCardsConfig.cards || [];
-            let badges = headerCardsConfig.badges || [];
+            const cards = headerCardsConfig.cards || [];
+            const badges = headerCardsConfig.badges || [];
 
-            let replaceTabs = (headerCardsConfig && headerCardsConfig.replace_tabs) || false;
+            const replaceTabs = (headerCardsConfig && headerCardsConfig.replace_tabs) || false;
 
-            let tabs = this.toolbar && this.toolbar.querySelector("ha-tabs");
-            let mainTitle = this.toolbar && this.toolbar.querySelector("div[main-title]");
-            let button = this.toolbar && this.toolbar.querySelector("div.action-items");
+            const tabs = this.toolbar && this.toolbar.querySelector("ha-tabs") as HTMLDivElement;
+            const mainTitle = this.toolbar && this.toolbar.querySelector("div[main-title]") as HTMLDivElement;
+            const button = this.toolbar && this.toolbar.querySelector("div.action-items") as HTMLDivElement;
 
-            let oldHeaderCards = this.toolbar.querySelector("#headerCards");
-            if (oldHeaderCards) oldHeaderCards.remove();
+            this.toolbar?.querySelector("#headerCards")?.remove();
 
-            let justify_content = headerCardsConfig.justify_content || "right";
+            const justify_content = headerCardsConfig.justify_content || "right";
 
             if (cards.length > 0 || badges.length > 0) {
-                let outerDiv = document.createElement("div");
+                const outerDiv = document.createElement("div");
                 outerDiv.id = "headerCards";
                 outerDiv.style.display = "flex";
                 outerDiv.style.visibility = "hidden";
@@ -296,7 +322,7 @@ class HeaderCards {
                 outerDiv.style["flex"] = "1";
 
                 if (badges.length > 0) {
-                    let div = document.createElement("div");
+                    const div = document.createElement("div");
                     div.style.width = "auto";
                     div.style.minWidth = "max-content";
                     div.style.display = "flex";
@@ -309,7 +335,7 @@ class HeaderCards {
 
                 if (cards.length > 0) {
                     cards.forEach(cardConfig => {
-                        let div = document.createElement("div");
+                        const div = document.createElement("div");
                         div.style.width = "auto";
                         div.style.minWidth = "max-content";
                         this.addCardWhenDefined(cardConfig, div);
@@ -318,30 +344,36 @@ class HeaderCards {
                 }
 
                 if (button) {
-                    this.toolbar.insertBefore(outerDiv, button);
+                    this.toolbar?.insertBefore(outerDiv, button);
                 } else {
-                    this.toolbar.appendChild(outerDiv);
+                    this.toolbar?.appendChild(outerDiv);
                 }
 
                 if (tabs || mainTitle) {
                     if (replaceTabs) {
-                        (tabs || mainTitle).style.display = "none";
+                        if (tabs) {
+                            tabs.style.display = "none";
+                        }
+                        if (mainTitle) {
+                            mainTitle.style.display = "none";
+                        }
                         outerDiv.style.visibility = "visible";
                     } else {
                         setTimeout(function () {
                             if (tabs) {
-                                let tabsContent = tabs.shadowRoot && tabs.shadowRoot.querySelector("#tabsContent");
-                                tabsContent.style.setProperty('width', 'auto', 'important');
-                                let width = tabsContent.offsetWidth;
-                                console.log("Tabs Width", width);
+                                const tabsContent = tabs.shadowRoot && tabs.shadowRoot.querySelector("#tabsContent") as HTMLDivElement;
+                                tabsContent?.style.setProperty('width', 'auto', 'important');
+                                const width = tabsContent?.offsetWidth;
                                 tabs.style.width = `${width}px`;
                                 tabs.style.paddingRight = "10px";
                                 outerDiv.style.visibility = "visible";
                             } else {
-                                mainTitle.style.flex = "0";
-                                mainTitle.style.paddingRight = "10px";
-                                mainTitle.style.width = "auto";
-                                mainTitle.style.minWidth = "max-content";
+                                if (mainTitle) {
+                                    mainTitle.style.flex = "0";
+                                    mainTitle.style.paddingRight = "10px";
+                                    mainTitle.style.width = "auto";
+                                    mainTitle.style.minWidth = "max-content";
+                                }
                                 outerDiv.style.display = "flex";
                                 outerDiv.style.visibility = "visible";
                             }
@@ -356,5 +388,13 @@ class HeaderCards {
 }
 
 Promise.resolve(customElements.whenDefined("hui-view")).then(() => {
-    window.HeaderCards = new HeaderCards();
+    console.info(
+        `%c HEADER-CARD %c v${pjson.version}`,
+        'color: red; font-weight: bold; background: black',
+        'color: white; font-weight: bold; background: dimgray',
+    );
+
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore
+    window.headerCards = new HeaderCards();
 });
