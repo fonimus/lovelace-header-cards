@@ -8,4 +8,5 @@ git commit --message "$message"
 git tag -a $version -m "$version"
 git push origin $version
 git push
+cp ./dist/main.js ./dist/lovelace-header-cards.js
 gh release create $version --title "$version" --notes "$message" './dist/lovelace-header-cards.js'
